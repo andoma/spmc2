@@ -186,7 +186,7 @@ plugins_v1_json(http_connection_t *hc, const char *remain,
       if(!strcmp(p->id, id))
         break;
 
-    if(p != NULL && p->intver < intver)
+    if(p != NULL && p->intver > intver)
       continue;
 
     if(p == NULL) {
