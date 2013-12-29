@@ -250,6 +250,7 @@ plugins_v1_json(http_connection_t *hc, const char *remain,
   htsmsg_add_msg(m, "blacklist", blacklist);
 
   char *json = htsmsg_json_serialize_to_str(m, 1);
+  htsmsg_destroy(m);
 
   uint8_t md[20];
   char digest[41];
@@ -258,7 +259,12 @@ plugins_v1_json(http_connection_t *hc, const char *remain,
 
   http_arg_set(&hc->hc_response_headers, "ETag", digest);
 
-  htsmsg_destroy(m);
+  const char *cached_copy = http_arg_get(&hc->hc_args, "If-None-Match");
+  if(cached_copy && !strcmp(cached_copy, digest)) {
+    free(json);
+    return 304;
+  }
+
   htsbuf_append_prealloc(&hc->hc_reply, json, strlen(json));
   http_output_content(hc, "application/json");
   return 0;
