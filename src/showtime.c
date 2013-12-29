@@ -9,6 +9,8 @@
 #include "libsvc/cfg.h"
 #include "libsvc/db.h"
 
+#include <openssl/sha.h>
+
 #include "showtime.h"
 #include "sql_statements.h"
 #include "spmc.h"
@@ -248,6 +250,14 @@ plugins_v1_json(http_connection_t *hc, const char *remain,
   htsmsg_add_msg(m, "blacklist", blacklist);
 
   char *json = htsmsg_json_serialize_to_str(m, 1);
+
+  uint8_t md[20];
+  char digest[41];
+  SHA1((void *)json, strlen(json), md);
+  bin2hex(digest, 41, md, 20);
+
+  http_arg_set(&hc->hc_response_headers, "ETag", digest);
+
   htsmsg_destroy(m);
   htsbuf_append_prealloc(&hc->hc_reply, json, strlen(json));
   http_output_content(hc, "application/json");
