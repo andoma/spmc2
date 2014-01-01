@@ -303,6 +303,7 @@ ingest_zip(struct archive *a,
   FILE *memfile = open_memstream(&out, &outlen);
 
   struct archive *aw = archive_write_new();
+  archive_write_set_bytes_per_block(aw, 0);
   archive_write_set_format_zip(aw);
 
   // We don't want to compress stuff as it defeats the binary diff protocol
