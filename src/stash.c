@@ -16,6 +16,7 @@
 #include "libsvc/misc.h"
 #include "libsvc/trace.h"
 #include "libsvc/http.h"
+#include "libsvc/db.h"
 
 #include "stash.h"
 
@@ -56,23 +57,19 @@ static int
 do_send_file(http_connection_t *hc, const char *ct,
              int content_len, const char *ce, int fd)
 {
+  // Since the filenames are hash of the contents, we can
+  // cache them "forever" (5 years)
+
+  int r = 0;
 
   http_send_header(hc, HTTP_STATUS_OK, ct, content_len, ce,
-                   NULL, 0, NULL, NULL, NULL);
+                   NULL, 86400 * 365 * 5, NULL, NULL, NULL);
 
-  if(!hc->hc_no_output) {
-    while(content_len > 0) {
-      int chunk = MIN(1024 * 1024 * 1024, content_len);
-      int r = tcp_sendfile(hc->hc_ts, fd, chunk);
-      if(r == -1) {
-        close(fd);
-        return -1;
-      }
-      content_len -= r;
-    }
-  }
+  if(!hc->hc_no_output)
+    r = tcp_sendfile(hc->hc_ts, fd, content_len);
+
   close(fd);
-  return 0;
+  return r;
 }
 
 
@@ -118,6 +115,11 @@ send_data(http_connection_t *hc, const char *remain, void *opaque)
 
   if(do_send_file(hc, ct, content_len, ce, fd))
     return -1;
+
+  conn_t *c = db_get_conn();
+  if(c != NULL)
+    db_stmt_exec(db_stmt_get(c, "UPDATE version SET downloads = downloads + 1 WHERE pkg_digest=?"), "s", remain);
+
   return 0;
 }
 
