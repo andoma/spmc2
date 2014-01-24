@@ -15,19 +15,16 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-WITH_CURL := yes
-WITH_MYSQL := yes
+WITH_MYSQL       := yes
 WITH_HTTP_SERVER := yes
-WITH_CTRLSOCK := yes
+WITH_CTRLSOCK    := yes
+WITH_CURL        := yes
 
 BUILDDIR = ${CURDIR}/build
 
 PROG=${BUILDDIR}/spmcd
 
-CFLAGS  += $(shell mysql_config --cflags)
-
 LDFLAGS += -larchive
-LDFLAGS += $(shell mysql_config --libs_r)
 
 SRCS += src/main.c \
 	src/cli.c \
@@ -47,5 +44,4 @@ uninstall:
 	rm -f "${prefix}/bin/spmcd" "${prefix}/bin/spmc"
 
 include libsvc/libsvc.mk
-
 -include $(DEPS)
