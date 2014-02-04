@@ -20,6 +20,7 @@
 #include "libsvc/ctrlsock.h"
 #include "libsvc/db.h"
 #include "libsvc/cmd.h"
+#include "libsvc/libsvc.h"
 
 #include "showtime.h"
 #include "spmc.h"
@@ -121,13 +122,9 @@ main(int argc, char **argv)
     exit(1);
   }
 
-  mysql_library_init(0, NULL, NULL);
-
-  tcp_server_init();
+  libsvc_init();
 
   http_init();
-
-  db_init();
 
   if(db_upgrade_schema("sql")) {
     fprintf(stderr, "Unable to upgrade database schema. Giving up\n");

@@ -147,7 +147,7 @@ sendmail(const char *recipient, const char *subject, const char *body,
  *
  */
 static void
-event_process(event_t *e, conn_t *c)
+event_process(event_t *e, db_conn_t *c)
 {
   char subject[256];
   char body[512];
@@ -181,7 +181,7 @@ event_process(event_t *e, conn_t *c)
   trace(LOG_INFO, "Plugin '%s' changed by '%s <%s>' %s",
         e->pluginid, actor.name, actor.mail, e->info);
 
-  MYSQL_STMT *s = db_stmt_get(c, "SELECT userid FROM plugin WHERE id=?");
+  db_stmt_t *s = db_stmt_get(c, "SELECT userid FROM plugin WHERE id=?");
 
   if(db_stmt_exec(s, "s", e->pluginid))
     return;
@@ -207,7 +207,7 @@ event_worker_thread(void *aux)
 {
   event_t *e;
 
-  conn_t *c = db_get_conn();
+  db_conn_t *c = db_get_conn();
   if(c == NULL) {
     trace(LOG_ALERT, "Unable to connect to database");
     exit(1);
@@ -237,7 +237,7 @@ event_worker_thread(void *aux)
  *
  */
 void
-event_add(conn_t *c, const char *pluginid, int userid, const char *fmt, ...)
+event_add(db_conn_t *c, const char *pluginid, int userid, const char *fmt, ...)
 {
   char buf[2048];
   va_list ap;
@@ -245,7 +245,7 @@ event_add(conn_t *c, const char *pluginid, int userid, const char *fmt, ...)
   vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
 
-  MYSQL_STMT *s =
+  db_stmt_t *s =
     db_stmt_get(c,
                 "INSERT INTO events (userid, plugin_id, info) VALUES (?,?,?)");
 

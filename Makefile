@@ -15,7 +15,10 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-WITH_MYSQL=yes
+WITH_CURL := yes
+WITH_MYSQL := yes
+WITH_HTTP_SERVER := yes
+WITH_CTRLSOCK := yes
 
 BUILDDIR = ${CURDIR}/build
 

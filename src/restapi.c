@@ -27,7 +27,7 @@
  *
  */
 static htsmsg_t *
-public_plugin_to_htsmsg(MYSQL_STMT *q, const char *baseurl)
+public_plugin_to_htsmsg(db_stmt_t *q, const char *baseurl)
 {
   char plugin_id[128];
   time_t created;
@@ -114,7 +114,7 @@ public_plugin_to_htsmsg(MYSQL_STMT *q, const char *baseurl)
  *
  */
 static htsmsg_t *
-version_to_htsmsg(MYSQL_STMT *q, const char *baseurl)
+version_to_htsmsg(db_stmt_t *q, const char *baseurl)
 {
   char plugin_id[128];
   time_t created;
@@ -207,7 +207,7 @@ do_plugins(http_connection_t *hc, int qtype)
   char buf1[512];
   cfg_root(root);
 
-  conn_t *c = db_get_conn();
+  db_conn_t *c = db_get_conn();
   if(c == NULL)
     return 500;
 
@@ -255,22 +255,8 @@ do_plugins(http_connection_t *hc, int qtype)
   scoped_db_stmt(q, query);
   if(q == NULL)
     return 500;
-#if 0
-  in[0].buffer_type = MYSQL_TYPE_STRING;
-  in[0].buffer = (char *)project;
-  in[0].buffer_length = strlen(project);
 
-  if(mysql_stmt_bind_param(q, in)) {
-    trace(LOG_ERR,
-          "Failed to bind parameters to prepared statement %s -- %s",
-          mysql_stmt_sqlstate(q), mysql_stmt_error(q));
-    return 500;
-  }
-#endif
-
-  if(mysql_stmt_execute(q)) {
-    trace(LOG_ERR, "Failed to execute statement %s -- %s",
-          mysql_stmt_sqlstate(q), mysql_stmt_error(q));
+  if(db_stmt_exec(q, "")) {
     return 500;
   }
 
@@ -329,7 +315,7 @@ plugins_count(http_connection_t *hc, const char *remain, void *opaque)
  *
  */
 static int
-plugins(http_connection_t *hc, int argc, char **argv)
+plugins(http_connection_t *hc, int argc, char **argv, int flags)
 {
   htsmsg_t *m;
 
@@ -340,7 +326,7 @@ plugins(http_connection_t *hc, int argc, char **argv)
 
   char query[1024];
 
-  conn_t *c = db_get_conn();
+  db_conn_t *c = db_get_conn();
   if(c == NULL)
     return 500;
 
@@ -396,7 +382,7 @@ plugins(http_connection_t *hc, int argc, char **argv)
     const char *betasecret = htsmsg_get_str(msg, "betasecret");
     const char *dlurl      = htsmsg_get_str(msg, "downloadurl");
 
-    MYSQL_STMT *s =
+    db_stmt_t *s =
       db_stmt_get(c,
                   "UPDATE plugin "
                   "SET betasecret = ?, downloadurl = ? "
@@ -422,7 +408,7 @@ plugins(http_connection_t *hc, int argc, char **argv)
  *
  */
 static int
-versions(http_connection_t *hc, int argc, char **argv)
+versions(http_connection_t *hc, int argc, char **argv, int flags)
 {
   if(argc != 2)
     return 500;
@@ -434,11 +420,11 @@ versions(http_connection_t *hc, int argc, char **argv)
 
   char *id = argv[1];
 
-  conn_t *c = db_get_conn();
+  db_conn_t *c = db_get_conn();
   if(c == NULL)
     return 500;
 
-  MYSQL_STMT *s = db_stmt_get(c,
+  db_stmt_t *s = db_stmt_get(c,
            "SELECT " VERSION_FIELDS " "
            "FROM version "
            "WHERE plugin_id = ? "
@@ -469,9 +455,9 @@ versions(http_connection_t *hc, int argc, char **argv)
  *
  */
 static int
-version(http_connection_t *hc, int argc, char **argv)
+version(http_connection_t *hc, int argc, char **argv, int flags)
 {
-  MYSQL_STMT *s;
+  db_stmt_t *s;
   int userid = http_arg_get_int(&hc->hc_req_args, "userid", 0);
 
   if(argc != 3)
@@ -482,7 +468,7 @@ version(http_connection_t *hc, int argc, char **argv)
   if(baseurl == NULL)
     return 500;
 
-  conn_t *c = db_get_conn();
+  db_conn_t *c = db_get_conn();
   if(c == NULL)
     return 500;
 
@@ -521,7 +507,7 @@ version(http_connection_t *hc, int argc, char **argv)
     if(m == API_NO_DATA)
       return 404;
 
-    while(!mysql_stmt_fetch(s)) {}
+    db_stmt_reset(s);
     break;
 
   default:
@@ -541,7 +527,7 @@ version(http_connection_t *hc, int argc, char **argv)
  *
  */
 static int
-pv_action(http_connection_t *hc, int argc, char **argv)
+pv_action(http_connection_t *hc, int argc, char **argv, int flags)
 {
   int userid = http_arg_get_int(&hc->hc_req_args, "userid", 0);
 
@@ -551,7 +537,7 @@ pv_action(http_connection_t *hc, int argc, char **argv)
   if(userid == 0)
     return 403;
 
-  conn_t *c = db_get_conn();
+  db_conn_t *c = db_get_conn();
   if(c == NULL)
     return 500;
 
@@ -559,7 +545,8 @@ pv_action(http_connection_t *hc, int argc, char **argv)
   const char *version = argv[2];
   const char *action = argv[3];
 
-  db_begin(c);
+  if(db_begin(c))
+    return 500;
 
   const char *info;
 
@@ -615,7 +602,7 @@ write_to_file(void *opaque, const char *fmt, ...)
  *
  */
 static int
-ingest(http_connection_t *hc, int argc, char **argv)
+ingest(http_connection_t *hc, int argc, char **argv, int flags)
 {
   FILE *f;
   ingest_result_t result;
@@ -672,7 +659,7 @@ ingest(http_connection_t *hc, int argc, char **argv)
  *
  */
 static int
-events(http_connection_t *hc, int argc, char **argv)
+events(http_connection_t *hc, int argc, char **argv, int flags)
 {
   int offset = http_arg_get_int(&hc->hc_req_args, "offset", 0);
   int limit  = http_arg_get_int(&hc->hc_req_args, "limit", 10);
@@ -685,7 +672,7 @@ events(http_connection_t *hc, int argc, char **argv)
   if(argc != 2)
     return 500;
 
-  conn_t *c = db_get_conn();
+  db_conn_t *c = db_get_conn();
   if(c == NULL)
     return 500;
 
@@ -767,19 +754,19 @@ events(http_connection_t *hc, int argc, char **argv)
 void
 restapi_init(void)
 {
-  http_route_add("/api/ingest$", ingest);
+  http_route_add("/api/ingest$", ingest, 0);
 
   http_path_add("/api/plugins.json",  NULL, plugins_json);
   http_path_add("/api/plugins.count", NULL, plugins_count);
 
-  http_route_add("/api/events.(json|count)", events);
+  http_route_add("/api/events.(json|count)", events, 0);
 
-  http_route_add("/api/plugins/([^/]+).json$", plugins);
-  http_route_add("/api/plugins/([^/]+)/versions.json$", versions);
-  http_route_add("/api/plugins/([^/]+)/versions/([^/]+)\\.json$", version);
+  http_route_add("/api/plugins/([^/]+).json$", plugins, 0);
+  http_route_add("/api/plugins/([^/]+)/versions.json$", versions, 0);
+  http_route_add("/api/plugins/([^/]+)/versions/([^/]+)\\.json$", version, 0);
 
 #define PV_ACTIONS "publish|unpublish|approve|reject|pend"
 
   http_route_add("/api/plugins/([^/]+)/versions/([^/]+)/("PV_ACTIONS").json$",
-                 pv_action);
+                 pv_action, 0);
 }

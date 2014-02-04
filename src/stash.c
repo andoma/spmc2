@@ -116,7 +116,7 @@ send_data(http_connection_t *hc, const char *remain, void *opaque)
   if(do_send_file(hc, ct, content_len, ce, fd))
     return -1;
 
-  conn_t *c = db_get_conn();
+  db_conn_t *c = db_get_conn();
   if(c != NULL)
     db_stmt_exec(db_stmt_get(c, "UPDATE version SET downloads = downloads + 1 WHERE pkg_digest=?"), "s", remain);
 

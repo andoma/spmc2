@@ -99,11 +99,11 @@ plugins_v1_json(http_connection_t *hc, const char *remain,
     }
   }
 
-  conn_t *c = db_get_conn();
+  db_conn_t *c = db_get_conn();
   if(c == NULL)
     return 500;
 
-  MYSQL_STMT *s = db_stmt_get(c, SQL_GET_ALL);
+  db_stmt_t *s = db_stmt_get(c, SQL_GET_ALL);
 
   if(db_stmt_exec(s, ""))
     return 500;

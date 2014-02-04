@@ -71,10 +71,10 @@ find_name(struct file_queue *fq, const char *name)
  *
  */
 static int
-ensure_plugin(conn_t *c, const char *id, int userid, const char *origin)
+ensure_plugin(db_conn_t *c, const char *id, int userid, const char *origin)
 {
   int current_user_id;
-  MYSQL_STMT *s;
+  db_stmt_t *s;
 
   s = db_stmt_get(c, "SELECT userid FROM plugin WHERE id=?");
   if(db_stmt_exec(s, "s", id))
@@ -84,7 +84,7 @@ ensure_plugin(conn_t *c, const char *id, int userid, const char *origin)
                         DB_RESULT_INT(current_user_id),
                         NULL);
 
-  mysql_stmt_reset(s);
+  db_stmt_reset(s);
 
   if(r < 0)
     return -1;
@@ -93,7 +93,7 @@ ensure_plugin(conn_t *c, const char *id, int userid, const char *origin)
     s = db_stmt_get(c, "INSERT INTO plugin (id, userid,downloadurl) VALUES (?,?,?)");
     if(db_stmt_exec(s, "sis", id, userid, origin))
       return -1;
-    mysql_stmt_reset(s);
+    db_stmt_reset(s);
     event_add(c, id, userid, "Plugin created");
     return 0;
   }
@@ -120,7 +120,7 @@ ingest_zip(struct archive *a,
 
   TAILQ_INIT(&fq);
 
-  conn_t *c = db_get_conn();
+  db_conn_t *c = db_get_conn();
   if(c == NULL) {
     msg(opaque, "Database connection problems");
     goto fail;
@@ -228,8 +228,11 @@ ingest_zip(struct archive *a,
   //
 
   in_transaction = 1;
-  db_begin(c);
-  MYSQL_STMT *s;
+  if(db_begin(c)) {
+    msg(opaque, "Unable to start transaction");
+    goto fail;
+  }
+  db_stmt_t *s;
 
   s = db_stmt_get(c, SQL_CHECK_VERSION);
   if(db_stmt_exec(s, "ss", id, version)) {
@@ -242,7 +245,7 @@ ingest_zip(struct archive *a,
                         DB_RESULT_TIME(created),
                         NULL);
 
-  mysql_stmt_reset(s);
+  db_stmt_reset(s);
 
   if(r < 0) {
     msg(opaque, "Database query problems");

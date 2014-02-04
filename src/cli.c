@@ -29,10 +29,10 @@ show_plugin(const char *user,
             void (*msg)(void *opaque, const char *fmt, ...),
             void *opaque)
 {
-  MYSQL_STMT *s;
+  db_stmt_t *s;
   char tstr[64];
   struct tm tm;
-  conn_t *c = db_get_conn();
+  db_conn_t *c = db_get_conn();
   if(c == NULL) {
     msg(opaque, "Database connection problems");
     return 0;
@@ -55,7 +55,7 @@ show_plugin(const char *user,
                         DB_RESULT_STRING(betasecret),
                         DB_RESULT_STRING(downloadurl));
 
-  mysql_stmt_reset(s);
+  db_stmt_reset(s);
 
   if(r < 0) {
     msg(opaque, "Database query problems");
@@ -158,8 +158,8 @@ delete_plugin(const char *user,
             void (*msg)(void *opaque, const char *fmt, ...),
             void *opaque)
 {
-  MYSQL_STMT *s;
-  conn_t *c = db_get_conn();
+  db_stmt_t *s;
+  db_conn_t *c = db_get_conn();
   if(c == NULL) {
     msg(opaque, "Database connection problems");
     return 0;
@@ -170,9 +170,9 @@ delete_plugin(const char *user,
     msg(opaque, "Database query problems");
     return 0;
   }
-  if(mysql_affected_rows(c->m))
+  if(db_stmt_affected_rows(s))
     trace(LOG_NOTICE, "User '%s' deleted %s %s", user, argv[0], argv[1]);
-  msg(opaque, "OK, %d rows deleted", mysql_affected_rows(c->m));
+  msg(opaque, "OK, %d rows deleted", db_stmt_affected_rows(s));
   return 0;
 }
 
