@@ -154,7 +154,6 @@ event_process(event_t *e, db_conn_t *c)
   cfg_root(cfg);
   user_info_t actor, owner;
 
-  const char *adminmail = cfg_get_str(cfg, CFG("admin", "email"), NULL);
 
   resolve_user(e->userid, &actor, cfg);
 
@@ -175,8 +174,14 @@ event_process(event_t *e, db_conn_t *c)
   snprintf(body + strlen(body), sizeof(body) - strlen(body),
            "--\nAutomated mail from SPMC\n");
 
-  if(adminmail)
+
+  for(int i = 0; ; i++) {
+    const char *adminmail =
+      cfg_get_str(cfg, CFG("admin", "email", CFG_INDEX(i)), NULL);
+    if(adminmail == NULL)
+      break;
     sendmail(adminmail, subject, body, cfg);
+  }
 
   trace(LOG_INFO, "Plugin '%s' changed by '%s <%s>' %s",
         e->pluginid, actor.name, actor.mail, e->info);
