@@ -37,9 +37,8 @@ SRCS += src/main.c \
 
 BUNDLES += sql
 
-install: ${PROG}
-	install -D ${PROG} "${prefix}/bin/spmcd"
-	install -D -m 755 spmc "${prefix}/bin/spmc"
+install: ${PROG}.installable
+	install -D ${PROG}.installable "${prefix}/bin/spmcd"
 uninstall:
 	rm -f "${prefix}/bin/spmcd" "${prefix}/bin/spmc"
 

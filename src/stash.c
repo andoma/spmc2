@@ -58,12 +58,12 @@ do_send_file(http_connection_t *hc, const char *ct,
              int content_len, const char *ce, int fd)
 {
   // Since the filenames are hash of the contents, we can
-  // cache them "forever" (5 years)
+  // cache them for a long while
 
   int r = 0;
 
   http_send_header(hc, HTTP_STATUS_OK, ct, content_len, ce,
-                   NULL, 86400 * 365 * 5, NULL, NULL, NULL);
+                   NULL, 86400 * 200, NULL, NULL, NULL);
 
   if(!hc->hc_no_output)
     r = tcp_sendfile(hc->hc_ts, fd, content_len);
