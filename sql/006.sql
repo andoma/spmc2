@@ -1,0 +1,1 @@
+ALTER TABLE plugin DROP COLUMN owner;
